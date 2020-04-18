@@ -11,11 +11,13 @@ logger = logging.getLogger(__name__)
 # This Trainer handles model training details
 class AutoTrainer(AbstractTrainer):
     def __init__(self, path, problem_type, scheduler_options=None, objective_func=None, stopping_metric=None, num_classes=None,
-                 low_memory=False, feature_types_metadata={}, kfolds=0, n_repeats=1, stack_ensemble_levels=0, time_limit=None, save_data=False, verbosity=2):
+                 low_memory=False, feature_types_metadata={}, kfolds=0, n_repeats=1, stack_ensemble_levels=0, time_limit=None, save_data=False, verbosity=2,
+                 callbacks_manager=None):
         super().__init__(path=path, problem_type=problem_type, scheduler_options=scheduler_options,
                          objective_func=objective_func, stopping_metric=stopping_metric, num_classes=num_classes, low_memory=low_memory,
                          feature_types_metadata=feature_types_metadata, kfolds=kfolds, n_repeats=n_repeats,
-                         stack_ensemble_levels=stack_ensemble_levels, time_limit=time_limit, save_data=save_data, verbosity=verbosity)
+                         stack_ensemble_levels=stack_ensemble_levels, time_limit=time_limit, save_data=save_data, verbosity=verbosity,
+                         callbacks_manager=callbacks_manager)
 
     def get_models(self, hyperparameters={'NN':{},'GBM':{}}, hyperparameter_tune=False, **kwargs):
         return get_preset_models(path=self.path, problem_type=self.problem_type, objective_func=self.objective_func, stopping_metric=self.stopping_metric,

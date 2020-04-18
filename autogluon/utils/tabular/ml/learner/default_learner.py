@@ -8,6 +8,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from .abstract_learner import AbstractLearner
+from ..callbacks.callbacks import CallbackManager
 from ..constants import BINARY, MULTICLASS, REGRESSION
 from ..trainer.auto_trainer import AutoTrainer
 from ...data.cleaner import Cleaner
@@ -23,11 +24,13 @@ logger = logging.getLogger(__name__)
 # Learner encompasses full problem, loading initial data, feature generation, model training, model prediction
 class DefaultLearner(AbstractLearner):
     def __init__(self, path_context: str, label: str, id_columns: list, feature_generator, label_count_threshold=10,
-                 problem_type=None, objective_func=None, stopping_metric=None, is_trainer_present=False, trainer_type=AutoTrainer):
+                 problem_type=None, objective_func=None, stopping_metric=None, is_trainer_present=False, trainer_type=AutoTrainer,
+                 callbacks_manager=CallbackManager()):
         super().__init__(path_context=path_context, label=label, id_columns=id_columns, feature_generator=feature_generator, label_count_threshold=label_count_threshold,
                          problem_type=problem_type, objective_func=objective_func, stopping_metric=stopping_metric, is_trainer_present=is_trainer_present)
         self.random_state = 0  # TODO: Add as input param
         self.trainer_type = trainer_type
+        self.callbacks_manager = callbacks_manager
 
     def fit(self, X: DataFrame, X_test: DataFrame = None, scheduler_options=None, hyperparameter_tune=True,
             feature_prune=False, holdout_frac=0.1, num_bagging_folds=0, num_bagging_sets=1, stack_ensemble_levels=0,
@@ -85,7 +88,8 @@ class DefaultLearner(AbstractLearner):
             scheduler_options=scheduler_options,
             time_limit=time_limit_trainer,
             save_data=save_data,
-            verbosity=verbosity
+            verbosity=verbosity,
+            callbacks_manager=self.callbacks_manager
         )
 
         self.trainer_path = trainer.path

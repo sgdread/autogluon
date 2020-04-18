@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # TODO: Add metadata object with info like score on each model, train time on each model, etc.
 class BaggedEnsembleModel(AbstractModel):
-    def __init__(self, path: str, name: str, model_base: AbstractModel, hyperparameters=None, objective_func=None, stopping_metric=None, random_state=0, debug=0):
+    def __init__(self, path: str, name: str, model_base: AbstractModel, hyperparameters=None, objective_func=None, stopping_metric=None, random_state=0, debug=0, callbacks_manager=None):
         self.model_base = model_base
         self._child_type = type(self.model_base)
         self.models = []
@@ -34,6 +34,7 @@ class BaggedEnsembleModel(AbstractModel):
         self._random_state = random_state
         self.low_memory = True
         self.bagged_mode = None
+        self.callbacks_manager = callbacks_manager
 
         try:
             feature_types_metadata = self.model_base.feature_types_metadata
@@ -176,7 +177,14 @@ class BaggedEnsembleModel(AbstractModel):
                 train_index, test_index = fold
                 X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
                 y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+                # Callback hook
+                fold_context = {}  # Fold context keeps components required for fold processing
+                fold_context, _, X_train, y_train, X_test, y_test = self.callbacks_manager.bagged_ensemble.before_fold_fit(fold_context, self.feature_types_metadata, X_train, y_train, X_test, y_test)
+
                 fold_model = copy.deepcopy(model_base)
+                fold_model.fold_context = fold_context
+
                 fold_model.name = f'{fold_model.name}_fold_{i}'
                 fold_model.set_contexts(self.path + fold_model.name + os.path.sep)
                 fold_model.fit(X_train=X_train, Y_train=y_train, X_test=X_test, Y_test=y_test, time_limit=time_limit_fold, **kwargs)
@@ -230,10 +238,16 @@ class BaggedEnsembleModel(AbstractModel):
         if preprocess:
             X = self.preprocess(X, model=model)
 
-        pred_proba = model.predict_proba(X=X, preprocess=False)
-        for model in self.models[1:]:
+        pred_proba = None
+        for model in self.models:
             model = self.load_child(model)
-            pred_proba += model.predict_proba(X=X, preprocess=False)
+            fold_context = model.fold_context if hasattr(model, 'fold_context') else {}
+            fold_context, model, X_processed = self.callbacks_manager.bagged_ensemble.before_fold_predict_proba(fold_context, model, X)
+            preds = model.predict_proba(X=X_processed, preprocess=False)
+            if pred_proba is None:
+                pred_proba = preds
+            else:
+                pred_proba += preds
         pred_proba = pred_proba / len(self.models)
 
         return pred_proba

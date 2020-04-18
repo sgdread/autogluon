@@ -11,6 +11,7 @@ from ..base.base_task import schedulers
 from ...utils import verbosity2loglevel
 from ...utils.tabular.features.auto_ml_feature_generator import AutoMLFeatureGenerator
 from ...utils.tabular.metrics import get_metric
+from ...utils.tabular.ml.callbacks.callbacks import CallbackManager
 from ...utils.tabular.ml.learner.default_learner import DefaultLearner as Learner
 from ...utils.tabular.ml.trainer.auto_trainer import AutoTrainer
 from ...utils.tabular.ml.utils import setup_outputdir, setup_compute, setup_trial_limits
@@ -62,7 +63,7 @@ class TabularPrediction(BaseTask):
             hyperparameters=None, cache_data=True,
             time_limits=None, num_trials=None, search_strategy='random', search_options=None,
             nthreads_per_trial=None, ngpus_per_trial=None, dist_ip_addrs=None, visualizer='none',
-            verbosity=2, **kwargs):
+            verbosity=2, callbacks_manager=CallbackManager(), **kwargs):
         """
         Fit models to predict a column of data table based on the other columns.
 
@@ -430,7 +431,7 @@ class TabularPrediction(BaseTask):
         scheduler_options = (scheduler, scheduler_options)  # wrap into tuple
         learner = Learner(path_context=output_directory, label=label, problem_type=problem_type, objective_func=eval_metric, stopping_metric=stopping_metric,
                           id_columns=id_columns, feature_generator=feature_generator, trainer_type=trainer_type,
-                          label_count_threshold=label_count_threshold)
+                          label_count_threshold=label_count_threshold, callbacks_manager=callbacks_manager)
         learner.fit(X=train_data, X_test=tuning_data, scheduler_options=scheduler_options,
                     hyperparameter_tune=hyperparameter_tune, feature_prune=feature_prune,
                     holdout_frac=holdout_frac, num_bagging_folds=num_bagging_folds, num_bagging_sets=num_bagging_sets, stack_ensemble_levels=stack_ensemble_levels,
