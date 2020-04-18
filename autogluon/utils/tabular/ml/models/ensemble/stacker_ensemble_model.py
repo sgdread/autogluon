@@ -17,8 +17,11 @@ logger = logging.getLogger(__name__)
 #  To solve this, this model must know full context of stacker, and only get preds once for each required model
 #  This is already done in trainer, but could be moved internally.
 class StackerEnsembleModel(BaggedEnsembleModel):
-    def __init__(self, path: str, name: str, model_base: AbstractModel, base_model_names=None, base_models_dict=None, base_model_paths_dict=None, base_model_types_dict=None, base_model_types_inner_dict=None, base_model_performances_dict=None, use_orig_features=True, num_classes=None, hyperparameters=None, objective_func=None, stopping_metric=None, random_state=0, debug=0):
-        super().__init__(path=path, name=name, model_base=model_base, hyperparameters=hyperparameters, objective_func=objective_func, stopping_metric=stopping_metric, random_state=random_state, debug=debug)
+    def __init__(self, path: str, name: str, model_base: AbstractModel, base_model_names=None, base_models_dict=None, base_model_paths_dict=None,
+                 base_model_types_dict=None, base_model_types_inner_dict=None, base_model_performances_dict=None, use_orig_features=True, num_classes=None,
+                 hyperparameters=None, objective_func=None, stopping_metric=None, random_state=0, debug=0, callbacks_manager=None):
+        super().__init__(path=path, name=name, model_base=model_base, hyperparameters=hyperparameters, objective_func=objective_func,
+                         stopping_metric=stopping_metric, random_state=random_state, debug=debug, callbacks_manager=callbacks_manager)
         if base_model_names is None:
             base_model_names = []
         if base_models_dict is None:
@@ -47,6 +50,7 @@ class StackerEnsembleModel(BaggedEnsembleModel):
         self.stack_column_prefix_lst = copy.deepcopy(self.base_model_names)
         self.stack_columns, self.num_pred_cols_per_model = self.set_stack_columns(stack_column_prefix_lst=self.stack_column_prefix_lst)
         self.stack_column_prefix_to_model_map = {stack_column_prefix: self.base_model_names[i] for i, stack_column_prefix in enumerate(self.stack_column_prefix_lst)}
+        self.callbacks_manager = callbacks_manager
 
     @staticmethod
     def limit_models_per_type(models, model_types, model_scores, max_models_per_type):
