@@ -146,6 +146,7 @@ class BaggedEnsembleModel(AbstractModel):
 
         models = []
         folds_to_fit = fold_end - fold_start
+        _, X, y = self.callbacks_manager.bagged_ensemble.before_folds(self._get_training_context(), X, y)
         for j in range(n_repeat_start, n_repeats):  # For each n_repeat
             cur_repeat_count = j - n_repeat_start
             fold_start_n_repeat = fold_start + cur_repeat_count * k_fold
@@ -178,9 +179,10 @@ class BaggedEnsembleModel(AbstractModel):
                 X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
                 y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-                # Callback hook
                 fold_context = {}  # Fold context keeps components required for fold processing
-                fold_context, _, X_train, y_train, X_test, y_test = self.callbacks_manager.bagged_ensemble.before_fold_fit(fold_context, self.feature_types_metadata, X_train, y_train, X_test, y_test)
+                _, fold_context, X_train, y_train, X_test, y_test = self.callbacks_manager.bagged_ensemble.before_fold_fit(
+                    self._get_training_context(), fold_context, X_train, y_train, X_test, y_test
+                )
 
                 fold_model = copy.deepcopy(model_base)
                 fold_model.fold_context = fold_context
@@ -234,15 +236,13 @@ class BaggedEnsembleModel(AbstractModel):
     # FIXME: Defective if model does not apply same preprocessing in all bags!
     #  No model currently violates this rule, but in future it could happen
     def predict_proba(self, X, preprocess=True):
-        model = self.load_child(self.models[0])
-        if preprocess:
-            X = self.preprocess(X, model=model)
-
         pred_proba = None
-        for model in self.models:
+        for i, model in enumerate(self.models):
             model = self.load_child(model)
+            if (i == 0) and preprocess:
+                X = self.preprocess(X, model=model)
             fold_context = model.fold_context if hasattr(model, 'fold_context') else {}
-            fold_context, model, X_processed = self.callbacks_manager.bagged_ensemble.before_fold_predict_proba(fold_context, model, X)
+            _, fold_context, X_processed = self.callbacks_manager.bagged_ensemble.before_fold_predict_proba(self._get_training_context(), fold_context, X)
             preds = model.predict_proba(X=X_processed, preprocess=False)
             if pred_proba is None:
                 pred_proba = preds
@@ -446,3 +446,10 @@ class BaggedEnsembleModel(AbstractModel):
             else:
                 child_info_dict[model.name] = model.get_info()
         return child_info_dict
+
+    def _get_training_context(self):
+        training_context = {
+            'feature_types_metadata': self.feature_types_metadata,
+            'problem_type': self.problem_type,
+        }
+        return training_context
