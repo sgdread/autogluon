@@ -17,8 +17,9 @@ class CallbackList:
         for c in self.callbacks:
             if hasattr(c, operation):
                 call = getattr(c, operation)
-                # print(args)
                 args = call(*args)
+        if len(args) == 1:
+            args = args[0]
         return args
 
 

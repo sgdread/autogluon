@@ -747,7 +747,7 @@ class AbstractTrainer:
             elif isinstance(model, StackerEnsembleModel):
                 context = {
                     'preprocess_in_stacker': True,
-                    'preprocess_in_model': False,
+                    'preprocess_in_model': False
                 }
                 context = self.callbacks_manager.bagged_ensemble.stacker_preprocessing_config(context)
 
