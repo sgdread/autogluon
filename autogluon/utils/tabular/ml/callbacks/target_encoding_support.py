@@ -1,7 +1,7 @@
 import category_encoders as ce
 
 from autogluon.utils.tabular.ml.models.lgb.hyperparameters.parameters import MULTICLASS
-
+import pandas as pd
 
 class TargetEncodingCallback:
 
@@ -11,6 +11,7 @@ class TargetEncodingCallback:
             max_cat_uniq_values_frac: float = 0.20,
             min_samples_leaf: int = 20,
             smoothing: float = 1.0,
+            cols_to_encode=None,
     ):
         """
 
@@ -30,6 +31,7 @@ class TargetEncodingCallback:
         self.max_cat_uniq_values_frac = max_cat_uniq_values_frac
         self.min_samples_leaf = min_samples_leaf
         self.smoothing = smoothing
+        self.cols_to_encode = cols_to_encode
 
     # Callback method
     def stacker_preprocessing_config(self, context):
@@ -41,12 +43,15 @@ class TargetEncodingCallback:
     # Callback method
     def before_folds(self, training_context, X, y):
         feature_types_metadata = training_context['feature_types_metadata']
-        cols_to_encode = feature_types_metadata.get('object', [])
-        uniq_counts = X[cols_to_encode].nunique()
-        uniq_frac = uniq_counts / len(X)
-        cats_count_above_min = uniq_counts[uniq_counts > self.low_cat_counts_threshold]  # Ignore low-cardinality categories: <20 values
-        cats_frac_below_max = uniq_frac[uniq_frac < self.max_cat_uniq_values_frac]  # Ignore categories with >20% unique values
-        cols_to_encode = [c for c in cols_to_encode if (c in cats_count_above_min) and (c in cats_frac_below_max)]
+        if self.cols_to_encode is None:
+            cols_to_encode = feature_types_metadata.get('object', [])
+            uniq_counts = X[cols_to_encode].nunique()
+            uniq_frac = uniq_counts / len(X)
+            cats_count_above_min = uniq_counts[uniq_counts > self.low_cat_counts_threshold]  # Ignore low-cardinality categories: <20 values
+            cats_frac_below_max = uniq_frac[uniq_frac < self.max_cat_uniq_values_frac]  # Ignore categories with >20% unique values
+            cols_to_encode = [c for c in cols_to_encode if (c in cats_count_above_min) and (c in cats_frac_below_max)]
+        else:
+            cols_to_encode = self.cols_to_encode
         training_context['cats_for_target_encoding'] = cols_to_encode
         print(f'Categories targeted for target encoding: {cols_to_encode}')
 
@@ -70,25 +75,23 @@ class TargetEncodingCallback:
                 encoder = ce.TargetEncoder(cols=cols_to_encode, min_samples_leaf=self.min_samples_leaf)  # , smoothing=5)
                 encoder.fit(X_train[cols_to_encode], y_cls)
                 encoders.append(encoder)
-                X_train_encoded = encoder.transform(X_train[cols_to_encode]).add_suffix(f'_{i}')
-                X_test_encoded = encoder.transform(X_test[cols_to_encode]).add_suffix(f'_{i}')
-                for c in X_train_encoded.columns:
-                    X_train[c] = X_train_encoded[c]
-                    X_test[c] = X_test_encoded[c]
+                X_train_encoded = encoder.transform(X_train[cols_to_encode]).add_suffix(f'_{i}_mean')
+                X_test_encoded = encoder.transform(X_test[cols_to_encode]).add_suffix(f'_{i}_mean')
 
+                X_train = pd.concat([X_train, X_train_encoded], axis=1)
+                X_test = pd.concat([X_test, X_test_encoded], axis=1)
             # Drop original columns
-            X_train = X_train.drop(columns=cols_to_encode)
-            X_test = X_test.drop(columns=cols_to_encode)
+            # X_train = X_train.drop(columns=cols_to_encode)
+            # X_test = X_test.drop(columns=cols_to_encode)
             fold_context['encoders'] = encoders
         else:
             encoder = ce.TargetEncoder(cols=cols_to_encode, min_samples_leaf=self.min_samples_leaf)  # , smoothing=5)
             fold_context['encoder'] = encoder
             encoder.fit(X_train, y_train)
-            X_train_encoded = encoder.transform(X_train)[cols_to_encode]
-            X_test_encoded = encoder.transform(X_test)[cols_to_encode]
-            for c in X_train_encoded.columns:
-                X_train[c] = X_train_encoded[c]
-                X_test[c] = X_test_encoded[c]
+            X_train_encoded = encoder.transform(X_train[cols_to_encode]).add_suffix('_mean')
+            X_test_encoded = encoder.transform(X_test[cols_to_encode]).add_suffix('_mean')
+            X_train = pd.concat([X_train, X_train_encoded], axis=1)
+            X_test = pd.concat([X_test, X_test_encoded], axis=1)
 
         X_train = fold_model.preprocess(X_train)
         X_test = fold_model.preprocess(X_test)
