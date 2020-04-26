@@ -177,9 +177,7 @@ class BaggedEnsembleModel(AbstractModel):
                 train_index, test_index = fold
                 X_train, X_test = X.iloc[train_index, :], X.iloc[test_index, :]
                 y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-
                 fold_model = copy.deepcopy(model_base)
-
                 fold_model.name = f'{fold_model.name}_fold_{i}'
                 fold_model.set_contexts(self.path + fold_model.name + os.path.sep)
                 fold_model.fit(X_train=X_train, Y_train=y_train, X_test=X_test, Y_test=y_test, time_limit=time_limit_fold, **kwargs)
@@ -229,17 +227,14 @@ class BaggedEnsembleModel(AbstractModel):
     # FIXME: Defective if model does not apply same preprocessing in all bags!
     #  No model currently violates this rule, but in future it could happen
     def predict_proba(self, X, preprocess=True):
-        pred_proba = None
-        for i, model in enumerate(self.models):
-            model = self.load_child(model)
-            if (i == 0) and preprocess:
+        model = self.load_child(self.models[0])
+        if preprocess:
                 X = self.preprocess(X, model=model)
 
-            preds = model.predict_proba(X=X_processed, preprocess=False)
-            if pred_proba is None:
-                pred_proba = preds
-            else:
-                pred_proba += preds
+        pred_proba = model.predict_proba(X=X, preprocess=False)
+        for model in self.models[1:]:
+            model = self.load_child(model)
+            pred_proba += model.predict_proba(X=X, preprocess=False)
         pred_proba = pred_proba / len(self.models)
 
         return pred_proba

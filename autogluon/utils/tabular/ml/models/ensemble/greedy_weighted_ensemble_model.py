@@ -44,12 +44,7 @@ class GreedyWeightedEnsembleModel(AbstractModel):
             index_start = i * self.num_pred_cols_per_model
             index_end = (i + 1) * self.num_pred_cols_per_model
             model_cols = self.features[index_start:index_end]
-
-            # Patching for models with with fold-specific pre-processing
-            if isinstance(pred_probas_df, list):
-                pred_proba = pred_probas_df[0]
-            else:
-                pred_proba = pred_probas_df[model_cols].values
+            pred_proba = pred_probas_df[model_cols].values
             if self.num_pred_cols_per_model == 1:
                 pred_proba = pred_proba.flatten()
             pred_probas.append(pred_proba)

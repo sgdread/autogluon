@@ -745,14 +745,8 @@ class AbstractTrainer:
                 else:
                     raise AssertionError(f'Model {model.name} must be a BaggedEnsembleModel to return oof_pred_proba')
             elif isinstance(model, StackerEnsembleModel):
-                context = {
-                    'preprocess_in_stacker': True,
-                    'preprocess_in_model': False
-                }
-                context = self.callbacks_manager.models.stacker_preprocessing_config(context)
-
-                X_input = model.preprocess(X=X, preprocess=context['preprocess_in_stacker'], infer=False, model_pred_proba_dict=model_pred_proba_dict)
-                model_pred_proba_dict[model_name] = model.predict_proba(X_input, preprocess=context['preprocess_in_model'])
+                X_input = model.preprocess(X=X, preprocess=True, infer=False, model_pred_proba_dict=model_pred_proba_dict)
+                model_pred_proba_dict[model_name] = model.predict_proba(X_input, preprocess=False)
             else:
                 model_pred_proba_dict[model_name] = model.predict_proba(X)
 
