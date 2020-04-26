@@ -5,7 +5,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from .abstract_learner import AbstractLearner
 from ..callbacks.callbacks import CallbackManager
@@ -106,6 +106,10 @@ class DefaultLearner(AbstractLearner):
         self.time_fit_training = time_end - time_preprocessing_end
         self.time_fit_total = time_end - time_preprocessing_start
         logger.log(20, f'AutoGluon training complete, total runtime = {round(self.time_fit_total, 2)}s ...')
+
+    def predict_proba(self, X_test: DataFrame, model=None, as_pandas=False, inverse_transform=True, sample=None):
+        X_test, model, as_pandas, inverse_transform, sample = self.callbacks_manager.models.before_predict_proba(X_test, model, as_pandas, inverse_transform, sample)
+        return super().predict_proba(X_test, model, as_pandas, inverse_transform, sample)
 
     def general_data_processing(self, X: DataFrame, X_test: DataFrame, holdout_frac: float, num_bagging_folds: int):
         """ General data processing steps used for all models. """

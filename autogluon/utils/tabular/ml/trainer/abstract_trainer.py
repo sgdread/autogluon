@@ -749,7 +749,7 @@ class AbstractTrainer:
                     'preprocess_in_stacker': True,
                     'preprocess_in_model': False
                 }
-                context = self.callbacks_manager.bagged_ensemble.stacker_preprocessing_config(context)
+                context = self.callbacks_manager.models.stacker_preprocessing_config(context)
 
                 X_input = model.preprocess(X=X, preprocess=context['preprocess_in_stacker'], infer=False, model_pred_proba_dict=model_pred_proba_dict)
                 model_pred_proba_dict[model_name] = model.predict_proba(X_input, preprocess=context['preprocess_in_model'])
