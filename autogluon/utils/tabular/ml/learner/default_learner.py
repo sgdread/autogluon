@@ -31,6 +31,7 @@ class DefaultLearner(AbstractLearner):
         self.random_state = 0  # TODO: Add as input param
         self.trainer_type = trainer_type
         self.callbacks_manager = callbacks_manager
+        self.learner_context = {}
 
     def fit(self, X: DataFrame, X_test: DataFrame = None, scheduler_options=None, hyperparameter_tune=True,
             feature_prune=False, holdout_frac=0.1, num_bagging_folds=0, num_bagging_sets=1, stack_ensemble_levels=0,
@@ -65,6 +66,9 @@ class DefaultLearner(AbstractLearner):
             logger.log(20, f'Tuning Data Columns: {len(X_test.columns)}')
         time_preprocessing_start = time.time()
         logger.log(20, 'Preprocessing data ...')
+        self.learner_context, X, X_test, holdout_frac, num_bagging_folds, _ = self.callbacks_manager.models.before_general_data_processing(
+            self.learner_context, X, X_test, holdout_frac, num_bagging_folds, self.label
+        )
         X, y, X_test, y_test, holdout_frac, num_bagging_folds = self.general_data_processing(X, X_test, holdout_frac, num_bagging_folds)
         time_preprocessing_end = time.time()
         self.time_fit_preprocessing = time_preprocessing_end - time_preprocessing_start
@@ -108,8 +112,17 @@ class DefaultLearner(AbstractLearner):
         logger.log(20, f'AutoGluon training complete, total runtime = {round(self.time_fit_total, 2)}s ...')
 
     def predict_proba(self, X_test: DataFrame, model=None, as_pandas=False, inverse_transform=True, sample=None):
-        X_test, model, as_pandas, inverse_transform, sample = self.callbacks_manager.models.before_predict_proba(X_test, model, as_pandas, inverse_transform, sample)
+        self.learner_context, X_test, model = self.callbacks_manager.models.before_predict_proba(
+            self.learner_context, X_test, model
+        )
         return super().predict_proba(X_test, model, as_pandas, inverse_transform, sample)
+
+    def get_feature_importance(self, model=None, X=None, y=None, features: list = None, raw=True, subsample_size=10000, silent=False) -> Series:
+        self.learner_context, model, X, y, features, raw, subsample_size, silent, _ = self.callbacks_manager.models.before_get_feature_importance(
+            self.learner_context, model, X, y, features, raw, subsample_size, silent, self.label
+        )
+
+        return super().get_feature_importance(model, X, y, features, raw, subsample_size, silent)
 
     def general_data_processing(self, X: DataFrame, X_test: DataFrame, holdout_frac: float, num_bagging_folds: int):
         """ General data processing steps used for all models. """
