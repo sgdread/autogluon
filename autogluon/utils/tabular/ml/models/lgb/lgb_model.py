@@ -120,9 +120,7 @@ class LGBModel(AbstractModel):
         self.model = lgb.train(**train_params)
         self.params_trained['num_boost_round'] = self.model.best_iteration
 
-    def predict_proba(self, X, preprocess=True):
-        if preprocess:
-            X = self.preprocess(X)
+    def predict_proba(self, X):
         if self.problem_type == REGRESSION:
             return self.model.predict(X)
 

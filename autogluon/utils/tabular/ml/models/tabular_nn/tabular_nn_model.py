@@ -375,7 +375,7 @@ class TabularNeuralNetModel(AbstractModel):
         self.params_trained['num_epochs'] = best_val_epoch
         return
 
-    def predict_proba(self, X, preprocess=True):
+    def predict_proba(self, X):
         """ To align predict wiht abstract_model API.
             Preprocess here only refers to feature processing stesp done by all AbstractModel objects,
             not tabularNN-specific preprocessing steps.
@@ -385,8 +385,6 @@ class TabularNeuralNetModel(AbstractModel):
         if isinstance(X, TabularNNDataset):
             return self._predict_tabular_data(new_data=X, process=False, predict_proba=True)
         elif isinstance(X, pd.DataFrame):
-            if preprocess:
-                X = self.preprocess(X)
             return self._predict_tabular_data(new_data=X, process=True, predict_proba=True)
         else:
             raise ValueError("X must be of type pd.DataFrame or TabularNNDataset, not type: %s" % type(X))

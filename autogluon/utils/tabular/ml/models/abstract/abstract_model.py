@@ -170,15 +170,12 @@ class AbstractModel:
         X_train = self.preprocess(X_train)
         self.model = self.model.fit(X_train, Y_train)
 
-    def predict(self, X, preprocess=True):
-        y_pred_proba = self.predict_proba(X, preprocess=preprocess)
+    def predict(self, X):
+        y_pred_proba = self.predict_proba(X)
         y_pred = get_pred_from_proba(y_pred_proba=y_pred_proba, problem_type=self.problem_type)
         return y_pred
 
-    def predict_proba(self, X, preprocess=True):
-        if preprocess:
-            X = self.preprocess(X)
-
+    def predict_proba(self, X):
         if self.problem_type == REGRESSION:
             return self.model.predict(X)
 
@@ -202,10 +199,10 @@ class AbstractModel:
         if metric_needs_y_pred is None:
             metric_needs_y_pred = self.metric_needs_y_pred
         if metric_needs_y_pred:
-            y_pred = self.predict(X=X, preprocess=preprocess)
+            y_pred = self.predict(X=X)
             return eval_metric(y, y_pred)
         else:
-            y_pred_proba = self.predict_proba(X=X, preprocess=preprocess)
+            y_pred_proba = self.predict_proba(X=X)
             return eval_metric(y, y_pred_proba)
 
     def score_with_y_pred_proba(self, y, y_pred_proba, eval_metric=None, metric_needs_y_pred=None):
@@ -327,9 +324,9 @@ class AbstractModel:
                 row_index = row_index_end
 
             if self.metric_needs_y_pred:
-                Y_pred = self.predict(X_test_raw, preprocess=False)
+                Y_pred = self.predict(X_test_raw)
             else:
-                Y_pred = self.predict_proba(X_test_raw, preprocess=False)
+                Y_pred = self.predict_proba(X_test_raw)
 
             row_index = 0
             for feature in parallel_computed_features:

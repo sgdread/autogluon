@@ -623,7 +623,7 @@ class AbstractTrainer:
         if isinstance(model, str):
             model = self.load_model(model)
         X = self.get_inputs_to_model(model=model, X=X, model_pred_proba_dict=model_pred_proba_dict, fit=False)
-        return model.predict(X=X, preprocess=False)
+        return model.predict(X=X)
 
     def predict_proba_model(self, X, model, model_pred_proba_dict=None):
         if isinstance(model, str):
@@ -632,21 +632,21 @@ class AbstractTrainer:
         EPS = 1e-10 # predicted probabilities can be at most this confident if we normalize predicted probabilities
         # TODO: ensure each model always outputs appropriately normalized predictions so this final safety check then becomes unnecessary
         if not self.normalize_predprobs:
-            return model.predict_proba(X=X, preprocess=False)
+            return model.predict_proba(X=X)
         elif self.problem_type == MULTICLASS:
-           y_predproba = model.predict_proba(X=X, preprocess=False)
+           y_predproba = model.predict_proba(X=X)
            most_negative_rowvals = np.clip(np.min(y_predproba, axis=1), a_min=None, a_max=0)
            y_predproba = y_predproba - most_negative_rowvals[:,None] # ensure nonnegative rows
            y_predproba = np.clip(y_predproba, a_min = EPS, a_max = None) # ensure no zeros
            return y_predproba / y_predproba.sum(axis=1, keepdims=1) # renormalize
         elif self.problem_type == BINARY:
-            y_predproba = model.predict_proba(X=X, preprocess=False)
+            y_predproba = model.predict_proba(X=X)
             min_y = np.min(y_predproba)
             max_y = np.max(y_predproba)
             if min_y < EPS or max_y > 1-EPS: # remap predicted probs to line that goes through: (min_y, EPS), (max_y, 1-EPS)
                 y_predproba =  EPS + ((1-2*EPS)/(max_y-min_y)) * (y_predproba - min_y)
             return y_predproba
-        return model.predict_proba(X=X, preprocess=False)
+        return model.predict_proba(X=X)
 
     # Note: model_pred_proba_dict is mutated in this function to minimize memory usage
     def get_inputs_to_model(self, model, X, model_pred_proba_dict=None, fit=False, preprocess=True):
@@ -745,7 +745,7 @@ class AbstractTrainer:
                     raise AssertionError(f'Model {model.name} must be a BaggedEnsembleModel to return oof_pred_proba')
             elif isinstance(model, StackerEnsembleModel):
                 X_input = model.preprocess(X=X, preprocess=True, infer=False, model_pred_proba_dict=model_pred_proba_dict)
-                model_pred_proba_dict[model_name] = model.predict_proba(X_input, preprocess=False)
+                model_pred_proba_dict[model_name] = model.predict_proba(X_input)
             else:
                 model_pred_proba_dict[model_name] = model.predict_proba(X)
 

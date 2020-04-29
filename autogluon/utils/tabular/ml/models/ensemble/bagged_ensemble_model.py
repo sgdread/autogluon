@@ -118,7 +118,8 @@ class BaggedEnsembleModel(AbstractModel):
             model_base.fit(X_train=X, Y_train=y, time_limit=time_limit, **kwargs)
             model_base.fit_time = time.time() - time_start_fit
             model_base.predict_time = None
-            self._oof_pred_proba = model_base.predict_proba(X=X)  # TODO: Cheater value, will be overfit to valid set
+            X_proc = model_base.preprocess(X)
+            self._oof_pred_proba = model_base.predict_proba(X=X_proc)  # TODO: Cheater value, will be overfit to valid set
             self._oof_pred_model_repeats = np.ones(shape=len(X))
             self._n_repeats = 1
             self._n_repeats_finished = 1
@@ -189,7 +190,8 @@ class BaggedEnsembleModel(AbstractModel):
                         expected_remaining_time_required = expected_time_required * (folds_left - 1) / folds_to_fit
                         if expected_remaining_time_required > time_left:
                             raise TimeLimitExceeded
-                pred_proba = fold_model.predict_proba(X_test)
+                X_test_proc = fold_model.preprocess(X_test)
+                pred_proba = fold_model.predict_proba(X_test_proc)
                 time_predict_end_fold = time.time()
                 fold_model.fit_time = time_train_end_fold - time_start_fold
                 fold_model.predict_time = time_predict_end_fold - time_train_end_fold
@@ -223,17 +225,12 @@ class BaggedEnsembleModel(AbstractModel):
             self._k_fold_end = k_fold_end
             self._n_repeats_finished = self._n_repeats - 1
 
-    # FIXME: Defective if model does not apply same preprocessing in all bags!
-    #  No model currently violates this rule, but in future it could happen
-    def predict_proba(self, X, preprocess=True):
+    def predict_proba(self, X):
         model = self.load_child(self.models[0])
-        if preprocess:
-            X = self.preprocess(X, model=model)
-
-        pred_proba = model.predict_proba(X=X, preprocess=False)
+        pred_proba = model.predict_proba(X=X)
         for model in self.models[1:]:
             model = self.load_child(model)
-            pred_proba += model.predict_proba(X=X, preprocess=False)
+            pred_proba += model.predict_proba(X=X)
         pred_proba = pred_proba / len(self.models)
 
         return pred_proba
