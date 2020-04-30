@@ -70,12 +70,8 @@ class BaggedEnsembleModel(AbstractModel):
         return self._oof_pred_proba / oof_pred_model_repeats_without_0
 
     def preprocess(self, X, model=None):
-        if model is None:
-            if not self.models:
-                return X
-            model = self.models[0]
-        model = self.load_child(model)
-        return model.preprocess(X)
+        # This method is never called alone, stacker's preprocess is used
+        raise NotImplementedError
 
     def fit(self, X, y, k_fold=5, k_fold_start=0, k_fold_end=None, n_repeats=1, n_repeat_start=0, time_limit=None, **kwargs):
         if k_fold < 1:

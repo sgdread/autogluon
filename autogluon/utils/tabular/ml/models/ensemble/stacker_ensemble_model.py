@@ -73,7 +73,7 @@ class StackerEnsembleModel(BaggedEnsembleModel):
         for param, val in default_params.items():
             self._set_default_param_value(param, val)
 
-    def preprocess(self, X, preprocess=True, fit=False, compute_base_preds=True, infer=True, model=None, model_pred_proba_dict=None):
+    def preprocess(self, X, preprocess=True, fit=False, compute_base_preds=True, infer=True, model_pred_proba_dict=None):
         if self.stack_column_prefix_lst:
             if infer:
                 if set(self.stack_columns).issubset(set(list(X.columns))):
@@ -100,7 +100,11 @@ class StackerEnsembleModel(BaggedEnsembleModel):
             elif not self.use_orig_features:
                 X = X[self.stack_columns]
         if preprocess:
-            X = super().preprocess(X, model=model)
+            if not self.models:
+                return X
+            model = self.models[0]
+            model = self.load_child(model)
+            X = model.preprocess(X)
         return X
 
     def pred_probas_to_df(self, pred_proba: list) -> pd.DataFrame:
