@@ -46,6 +46,7 @@ class CallbackManager:
             if hasattr(c, operation):
                 call = getattr(c, operation)
                 args = call(*args)
-        if len(args) == 1:
-            args = args[0]
+        if type(args) == list:
+            if len(args) == 1:
+                args = args[0]
         return args
