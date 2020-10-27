@@ -236,19 +236,23 @@ class GPFIFOSearcher(object):
 
         :return: Next config to evaluate at
         """
+        print(f'        get_config.1')
         state = self.state_transformer.state
         if self.do_profile:
             fit_hyperparams = not self.state_transformer.skip_optimization(
                 state)
             self.profiler.set_state(state, fit_hyperparams)
+        print(f'        get_config.2')
         blacklisted_candidates = compute_blacklisted_candidates(state)
         pick_random = (len(blacklisted_candidates) < self.num_initial_random_choices) or \
             (not state.candidate_evaluations)
         if self.debug_log is not None:
             self.debug_log.start_get_config('random' if pick_random else 'BO')
+        print(f'        get_config.3')
         if pick_random:
             config = None
             if self.first_is_default and (not blacklisted_candidates):
+                print(f'        get_config.4')
                 # Use default configuration if there is one specified
                 default_config = self.hp_ranges.config_space.get_default_configuration()
                 if default_config and len(default_config.get_dictionary()) > 0:
@@ -257,6 +261,7 @@ class GPFIFOSearcher(object):
                         logger.info("Start with default config:\n{}".format(
                             candidate_for_print(config)))
             if config is None:
+                print(f'        get_config.5')
                 if self.do_profile:
                     self.profiler.start('random')
                 for _ in range(GET_CONFIG_RANDOM_RETRIES):
@@ -272,6 +277,7 @@ class GPFIFOSearcher(object):
                 if self.do_profile:
                     self.profiler.stop('random')
         else:
+            print(f'        get_config.6')
             # Obtain current SurrogateModel from state transformer. Based on
             # this, the BO algorithm components can be constructed
             state = self.state_transformer.state
@@ -283,6 +289,7 @@ class GPFIFOSearcher(object):
             if self.do_profile:
                 self.profiler.stop('total_update')
             # Create BO algorithm
+            print(f'        get_config.7')
             initial_candidates_scorer = create_initial_candidates_scorer(
                 self.initial_scoring, model, self.acquisition_class,
                 self.random_state)
@@ -290,6 +297,7 @@ class GPFIFOSearcher(object):
                 state, model, self.acquisition_class)
             # Make sure not to use the same random seed for each call:
             #random_seed = compute_random_seed({'0': state}, self.random_seed)
+            print(f'        get_config.8')
             bo_algorithm = BayesianOptimizationAlgorithm(
                 initial_candidates_generator=self.random_generator,
                 initial_candidates_scorer=initial_candidates_scorer,
@@ -306,6 +314,7 @@ class GPFIFOSearcher(object):
             # Next candidate decision
             if self.do_profile:
                 self.profiler.start('total_nextcand')
+            print(f'        get_config.9')
             _config = bo_algorithm.next_candidates()
             if len(_config) == 0:
                 raise AssertionError(
@@ -313,6 +322,7 @@ class GPFIFOSearcher(object):
                     "before. Maybe there are no free configurations left? "
                     "The blacklist size is {}".format(len(blacklisted_candidates)))
             config = _config[0]
+            print(f'        get_config.10')
             if self.do_profile:
                 self.profiler.stop('total_nextcand')
             if self.do_profile:

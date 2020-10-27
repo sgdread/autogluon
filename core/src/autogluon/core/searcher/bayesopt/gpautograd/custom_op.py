@@ -2,6 +2,7 @@ import autograd.numpy as anp
 import autograd.scipy.linalg as aspl
 from autograd.extend import primitive, defvjp
 import logging
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +76,12 @@ def AddJitterOp(inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR
     jitter_upperbound = _get_jitter_upperbound(x)
     must_increase_jitter = True
     x_plus_constant = None
-    
+
     while must_increase_jitter and jitter <= jitter_upperbound:
         try:
             x_plus_constant = x + _get_constant_identity(
                 x, sigsq_init + jitter)
-            L = anp.linalg.cholesky(x_plus_constant)
+            L = torch.cholesky(torch.tensor(x_plus_constant)).numpy()
             must_increase_jitter = False
         except anp.linalg.LinAlgError:
             if debug_log == 'true':
@@ -92,7 +93,7 @@ def AddJitterOp(inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR
                 jitter = jitter * jitter_growth
 
     assert not must_increase_jitter, "The jitter ({}) has reached its upperbound ({}) while the Cholesky of the input matrix still cannot be computed.".format(jitter, jitter_upperbound)
-    
+
     if debug_log == 'true':
         logger.info("sigsq_final = {}".format(sigsq_init + jitter))
 
@@ -119,7 +120,8 @@ def cholesky_factorization(a):
     :param a: Symmmetric positive definite matrix A
     :return: Lower-triangular Cholesky factor L of A
     """
-    return anp.linalg.cholesky(a)
+    result = torch.cholesky(torch.tensor(a)).numpy()
+    return result
 
 
 def copyltu(x):

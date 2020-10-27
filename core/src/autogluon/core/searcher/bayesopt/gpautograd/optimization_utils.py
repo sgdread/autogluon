@@ -65,6 +65,7 @@ def _apply_lbfgs_internal(
     ret_info = None
 
     try:
+        print(f'                            _apply_lbfgs_internal.1')
         output = optimize.minimize(exec_func,
                                    param_numpy_array,
                                    jac=True,
@@ -73,6 +74,7 @@ def _apply_lbfgs_internal(
                                    tol=LBFGS_tol,
                                    options={"maxiter": LBFGS_maxiter},
                                    callback=LBFGS_callback)
+        print(f'                            _apply_lbfgs_internal.2')
         # NOTE: Be aware that the stopping condition based on tol can terminate
         # with a gradient size which is not small.
         # To control L-BFGS convergence conditions for real, have to instead use

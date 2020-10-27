@@ -186,6 +186,7 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
         self._state.failed_candidates.append(candidate)
 
     def _compute_model(self, skip_optimization: bool = None):
+        print(f'            _compute_model.1')
         args = self._model_args
         if skip_optimization is None:
             skip_optimization = self.skip_optimization(self._state)
@@ -198,6 +199,7 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
                 logger.warning(
                     "Skipping the refitting of GP hyperparameters, since the "
                     "labeled data did not change since the last recent fit")
+        print(f'            _compute_model.2')
         self._model = GaussProcSurrogateModel(
             state=self._state,
             active_metric=args.active_metric,
@@ -213,9 +215,12 @@ class GPModelPendingCandidateStateTransformer(PendingCandidateStateTransformer):
         self._debug_fantasy_values = None
         # Note: This may be different than self._gpmodel.get_params(), since
         # the GaussProcSurrogateModel may append additional info
+        print(f'            _compute_model.3')
         self._model_params = self._model.get_params()
+        print(f'            _compute_model.4')
         if fit_parameters:
             # Keep copy of labeled data in order to avoid unnecessary
             # refitting
             self._candidate_evaluations = copy.copy(
                 self._state.candidate_evaluations)
+        print(f'            _compute_model.5')

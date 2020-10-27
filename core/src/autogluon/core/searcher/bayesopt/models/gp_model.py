@@ -193,30 +193,39 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
         - Recompute posterior (without fitting)
 
         """
+        print(f'                _compute_posterior.1')
         if self._debug_log is not None:
             self._debug_log.set_state(self.state)
         # Compute posterior for state without pending evals
         no_pending_state = self.state
+        print(f'                _compute_posterior.2')
         if self.state.pending_evaluations:
+            print(f'                _compute_posterior.3')
             no_pending_state = TuningJobState(
                 hp_ranges=self.state.hp_ranges,
                 candidate_evaluations=self.state.candidate_evaluations,
                 failed_candidates=self.state.failed_candidates,
                 pending_evaluations=[])
+        print(f'                _compute_posterior.4')
         self._posterior_for_state(no_pending_state, fit_parameters, profiler)
+        print(f'                _compute_posterior.5')
         if self.state.pending_evaluations:
             # Sample fantasy values for pending evals
+            print(f'                _compute_posterior.6')
             pending_configs = [
                 x.candidate for x in self.state.pending_evaluations]
             new_pending = self._draw_fantasy_values(pending_configs)
+            print(f'                _compute_posterior.7')
             # Compute posterior for state with pending evals
             # Note: profiler is not passed here, this would overwrite the
             # results from the first call
+            print(f'                _compute_posterior.8')
             with_pending_state = TuningJobState(
                 hp_ranges=self.state.hp_ranges,
                 candidate_evaluations=self.state.candidate_evaluations,
                 failed_candidates=self.state.failed_candidates,
                 pending_evaluations=new_pending)
+            print(f'                _compute_posterior.9')
             self._posterior_for_state(
                 with_pending_state, fit_parameters=False, profiler=None)
             # Note: At this point, the fantasy values are dropped, they are not
@@ -224,6 +233,7 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
             # computation. We still maintain them in self.fantasy_samples,
             # which is mainly used for testing
             self.fantasy_samples = new_pending
+            print(f'                _compute_posterior.10')
 
     def _posterior_for_state(
             self, state: TuningJobState, fit_parameters: bool,
@@ -248,13 +258,18 @@ class GaussProcSurrogateModel(BaseSurrogateModel):
         self.mean = internal_candidate_evaluations.mean
         self.std = internal_candidate_evaluations.std
 
+        print(f'                    _posterior_for_state.1')
         fit_parameters = fit_parameters and (not state.pending_evaluations)
         if not fit_parameters:
             logger.info("Recomputing GP state")
+            print(f'                    _posterior_for_state.2')
             self._gpmodel.recompute_states(X_all, Y_all, profiler=profiler)
+            print(f'                    _posterior_for_state.3')
         else:
             logger.info("Fitting GP model")
+            print(f'                    _posterior_for_state.4')
             self._gpmodel.fit(X_all, Y_all, profiler=profiler)
+            print(f'                    _posterior_for_state.5')
         if self._debug_log is not None:
             self._debug_log.set_gp_params(self.get_params())
             if not state.pending_evaluations:

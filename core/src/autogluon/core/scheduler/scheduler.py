@@ -60,9 +60,12 @@ class TaskScheduler(object):
         """Add remote nodes to the scheduler computation resource.
         """
         ip_addrs = [ip_addrs] if isinstance(ip_addrs, str) else ip_addrs
+        print('add_remote waiting lock')
         with self.LOCK:
+            print('add_remote got lock')
             remotes = TaskScheduler.remote_manager.add_remote_nodes(ip_addrs)
             TaskScheduler.resource_manager.add_remote(remotes)
+        print('add_remote released lock')
 
     @classmethod
     def upload_files(cls, files, **kwargs):
@@ -106,8 +109,11 @@ class TaskScheduler(object):
         job = cls._start_distributed_job(task, cls.resource_manager)
         new_dict = self._dict_from_task(task)
         new_dict['Job'] = job
+        print('add_job waiting lock')
         with self.LOCK:
+            print('add_job got lock')
             self.scheduled_tasks.append(new_dict)
+        print('add_job released lock')
 
     def run_job(self, task):
         """Run a training task to the scheduler (Sync).
@@ -121,11 +127,11 @@ class TaskScheduler(object):
     def _start_distributed_job(task, resource_manager):
         """Async Execute the job in remote and release the resources
         """
-        logger.debug('\nScheduling {}'.format(task))
+        print('\nScheduling {}'.format(task))
         job = task.resources.node.submit(TaskScheduler._run_dist_job,
                                          task.fn, task.args, task.resources.gpu_ids)
         def _release_resource_callback(fut):
-            logger.debug('Start Releasing Resource')
+            print(f'Start Releasing Resource {task}')
             resource_manager._release(task.resources)
         job.add_done_callback(_release_resource_callback)
         return job
@@ -175,7 +181,9 @@ class TaskScheduler(object):
         pass
 
     def _cleaning_tasks(self):
+        print('_cleaning_tasks waiting lock')
         with self.LOCK:
+            print('_cleaning_tasks got lock')
             new_scheduled_tasks = []
             for task_dict in self.scheduled_tasks:
                 if task_dict['Job'].done():
@@ -185,6 +193,7 @@ class TaskScheduler(object):
                     new_scheduled_tasks.append(task_dict)
             if len(new_scheduled_tasks) < len(self.scheduled_tasks):
                 self.scheduled_tasks = new_scheduled_tasks
+        print('_cleaning_tasks released lock')
 
     def join_tasks(self):
         warn("scheduler.join_tasks() is now deprecated in favor of scheduler.join_jobs().",

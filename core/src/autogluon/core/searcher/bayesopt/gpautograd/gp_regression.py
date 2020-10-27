@@ -132,25 +132,33 @@ class GaussianProcessRegression(GaussianProcessModel):
                 X.shape[0], Y.shape[0])
         assert Y.shape[1] == 1, "Y cannot be a matrix if parameters are to be fit"
         
+        print(f'                        fit.1')
         if self.fit_reset_params:
+            print(f'                        fit.2')
             self.reset_params()
+        print(f'                        fit.3')
         if self._debug_writer is not None:
+            print(f'                        fit.4')
             self._debug_writer.start_optimization()
+        print(f'                        fit.5')
         mean_function = self.likelihood.mean
         if isinstance(mean_function, ScalarMeanFunction):
             mean_function.set_mean_value(np.mean(Y))
         if profiler is not None:
             profiler.start('fit_hyperpars')
         n_starts = self.optimization_config.n_starts
+        print(f'                        fit.6')
         ret_infos = apply_lbfgs_with_multiple_starts(
             *self._create_lbfgs_arguments(X, Y),
             bounds=self.likelihood.box_constraints_internal(),
             n_starts=n_starts,
             tol=self.optimization_config.lbfgs_tol,
             maxiter=self.optimization_config.lbfgs_maxiter)
+        print(f'                        fit.7')
         if profiler is not None:
             profiler.stop('fit_hyperpars')
 
+        print(f'                        fit.8')
         # Logging in response to failures of optimization runs
         n_succeeded = sum(x is None for x in ret_infos)
         if n_succeeded < n_starts:
@@ -175,8 +183,10 @@ class GaussianProcessRegression(GaussianProcessModel):
             self._set_likelihood_params(copy_params)
             if n_succeeded == 0:
                 logger.info("All restarts failed: Skipping hyperparameter fitting for now")
+        print(f'                        fit.9')
         # Recompute posterior state for new hyperparameters
         self._recompute_states(X, Y, profiler=profiler)
+        print(f'                        fit.10')
 
     def _set_likelihood_params(self, params: dict):
         for param in self.likelihood.collect_params().values():

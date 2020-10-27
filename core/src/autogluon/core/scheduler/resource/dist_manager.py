@@ -16,8 +16,9 @@ class DistributedResourceManager(object):
     __instance = None
     def __new__(cls):
         # Singleton
-        if cls.__instance is None:
-            cls.__instance = object.__new__(cls)
+        with cls.LOCK:
+            if cls.__instance is None:
+                cls.__instance = object.__new__(cls)
         return cls.__instance
 
     @classmethod
@@ -32,10 +33,13 @@ class DistributedResourceManager(object):
     @classmethod
     def reserve_resource(cls, remote, resource):
         node_manager = cls.NODE_RESOURCE_MANAGER[remote]
+        print('reserve_resource waiting lock')
         with cls.LOCK:
+            print('reserve_resource got lock')
             if not node_manager.check_availability(resource):
                 return False
             node_manager._request(remote, resource)
+        print('reserve_resource released lock')
         logger.info('Reserved {} in {}'.format(resource, remote))
         return True
 
@@ -60,16 +64,25 @@ class DistributedResourceManager(object):
             'largest node availability CPUs={}, GPUs={}'. \
             format(resource.num_cpus, resource.num_gpus, cls.MAX_GPU_COUNT, cls.MAX_CPU_COUNT)
        
+        print('_request.1 waiting lock')
+        exit = False
         with cls.LOCK:
+            print('_request.1 got lock')
             node = cls.check_availability(resource)
             if node is not None:
                 cls.NODE_RESOURCE_MANAGER[node]._request(node, resource)
-                return
+                exit = True
+        print('_request.1 released lock')
+        if exit:
+            return
 
         logger.debug('Appending {} to Request Stack'.format(resource))
         request_semaphore = mp.Semaphore(0)
+        print('_request.2 waiting lock')
         with cls.LOCK:
+            print('_request.2 got lock')
             cls.REQUESTING_STACK.append((resource, request_semaphore))
+        print('_request.2 released lock')
         request_semaphore.acquire()
         return
 
@@ -82,7 +95,10 @@ class DistributedResourceManager(object):
     @classmethod
     def _evoke_request(cls):
         succeed = False
+        print('_evoke_request waiting lock')
+        exit = False
         with cls.LOCK:
+            print('_evoke_request got lock')
             if len(cls.REQUESTING_STACK) > 0:
                 resource, request_semaphore = cls.REQUESTING_STACK.pop()
                 node = cls.check_availability(resource)
@@ -93,7 +109,10 @@ class DistributedResourceManager(object):
                     succeed = True
                 else:
                     cls.REQUESTING_STACK.append((resource, request_semaphore))
-                    return
+                    exit = True
+        print('_evoke_request released lock')
+        if exit:
+            return
         if succeed:
             cls._evoke_request()
 
@@ -163,13 +182,15 @@ class NodeResourceManager(object):
             'system availability CPUs={}, GPUs={}'. \
             format(resource.num_cpus, resource.num_gpus, self.MAX_GPU_COUNT, self.MAX_CPU_COUNT)
 
+        print('_request waiting lock')
         with self.LOCK:
+            print('_request got lock')
             cpu_ids = [self.CPU_QUEUE.get() for i in range(resource.num_cpus)]
             gpu_ids = [self.GPU_QUEUE.get() for i in range(resource.num_gpus)]
             resource._ready(remote, cpu_ids, gpu_ids)
             #logger.debug("\nReqeust succeed {}".format(resource))
-            return
- 
+        print('_request released lock')
+
     def _release(self, resource):
         cpu_ids = resource.cpu_ids
         gpu_ids = resource.gpu_ids

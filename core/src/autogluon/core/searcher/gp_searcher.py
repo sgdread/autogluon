@@ -129,7 +129,7 @@ class GPFIFOSearcher(BaseSearcher):
         self.gp_searcher = _gp_searcher
         # This lock protects gp_searcher. We are not using self.LOCK, this
         # can lead to deadlocks when superclass methods are called
-        self._gp_lock = mp.Lock()
+        self._gp_lock = mp.RLock()
 
     def configure_scheduler(self, scheduler):
         from ..scheduler import FIFOScheduler
@@ -139,46 +139,77 @@ class GPFIFOSearcher(BaseSearcher):
         super().configure_scheduler(scheduler)
 
     def get_config(self, **kwargs):
+        print('GPFIFOSearcher.get_config waiting lock')
         with self._gp_lock:
+            print('GPFIFOSearcher.get_config got lock')
             config_cs = self.gp_searcher.get_config()
+        print('GPFIFOSearcher.get_config released lock')
         return config_cs.get_dictionary()
 
     def update(self, config, **kwargs):
         super().update(config, **kwargs)
+        print('GPFIFOSearcher.update waiting lock')
         with self._gp_lock:
+            print('GPFIFOSearcher.update got lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.update(
                 config_cs, reward=kwargs[self._reward_attribute])
+        print('GPFIFOSearcher.update released lock')
 
     def register_pending(self, config, milestone=None):
+        print('GPFIFOSearcher.register_pending waiting lock')
         with self._gp_lock:
+            print('GPFIFOSearcher.register_pending got lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.register_pending(config_cs)
+        print('GPFIFOSearcher.register_pending released lock')
 
     def evaluation_failed(self, config, **kwargs):
+        print('GPFIFOSearcher.evaluation_failed waiting lock')
         with self._gp_lock:
+            print('GPFIFOSearcher.evaluation_failed got lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.evaluation_failed(config_cs)
+        print('GPFIFOSearcher.evaluation_failed released lock')
 
     def dataset_size(self):
+        print('GPFIFOSearcher.dataset_size waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.dataset_size()
+            print('GPFIFOSearcher.dataset_size got lock')
+            result = self.gp_searcher.dataset_size()
+        print('GPFIFOSearcher.dataset_size released lock')
+        return result
 
     def cumulative_profile_record(self):
+        print('GPFIFOSearcher.cumulative_profile_record waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.cumulative_profile_record()
+            print('GPFIFOSearcher.cumulative_profile_record got lock')
+            result = self.gp_searcher.cumulative_profile_record()
+        print('GPFIFOSearcher.cumulative_profile_record released lock')
+        return result
 
     def model_parameters(self):
+        print('GPFIFOSearcher.model_parameters waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.get_params()
+            print('GPFIFOSearcher.model_parameters got lock')
+            result = self.gp_searcher.get_params()
+        print('GPFIFOSearcher.model_parameters released lock')
+        return result
 
     def get_state(self):
+        print('GPFIFOSearcher.get_state waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.get_state()
+            print('GPFIFOSearcher.get_state got lock')
+            result = self.gp_searcher.get_state()
+        print('GPFIFOSearcher.get_state released lock')
+        return result
 
     def clone_from_state(self, state):
+        print('GPFIFOSearcher.clone_from_state waiting lock')
         with self._gp_lock:
+            print('GPFIFOSearcher.clone_from_state got lock')
             _gp_searcher = self.gp_searcher.clone_from_state(state)
+        print('GPFIFOSearcher.clone_from_state released lock')
         # Use copy constructor
         return GPFIFOSearcher(
             reward_attribute=self._reward_attribute,
@@ -186,8 +217,12 @@ class GPFIFOSearcher(BaseSearcher):
 
     @property
     def debug_log(self):
+        print('GPFIFOSearcher.debug_log waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.debug_log
+            print('GPFIFOSearcher.debug_log got lock')
+            result = self.gp_searcher.debug_log
+        print('GPFIFOSearcher.debug_log released lock')
+        return result
 
     def _to_config_cs(self, config):
         return _to_config_cs(self.gp_searcher.hp_ranges.config_space, config)
@@ -337,19 +372,27 @@ class GPMultiFidelitySearcher(BaseSearcher):
         assert isinstance(scheduler, HyperbandScheduler), \
             "This searcher requires HyperbandScheduler scheduler"
         super().configure_scheduler(scheduler)
+        print('GPMultiFidelitySearcher.configure_scheduler waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.configure_scheduler got lock')
             self.gp_searcher.set_map_resource_to_index(
                 scheduler.map_resource_to_index())
+        print('GPMultiFidelitySearcher.configure_scheduler released lock')
         self._resource_attribute = scheduler._time_attr
 
     def get_config(self, **kwargs):
+        print('GPMultiFidelitySearcher.get_config waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.get_config got lock')
             config_cs = self.gp_searcher.get_config(**kwargs)
+        print('GPMultiFidelitySearcher.get_config released lock')
         return config_cs.get_dictionary()
 
     def update(self, config, **kwargs):
         super().update(config, **kwargs)
+        print('GPMultiFidelitySearcher.update waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.update released lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.update(
                 config_cs, reward=kwargs[self._reward_attribute],
@@ -358,44 +401,73 @@ class GPMultiFidelitySearcher(BaseSearcher):
             # which may have been overlooked
             if kwargs.get('terminated', False):
                 self.gp_searcher.cleanup_pending(config_cs)
+        print('GPMultiFidelitySearcher.update got lock')
 
     def register_pending(self, config, milestone=None):
         assert milestone is not None, \
             "This searcher works with a multi-fidelity scheduler only"
+        print('GPMultiFidelitySearcher.register_pending waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.register_pending got lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.register_pending(config_cs, milestone)
+        print('GPMultiFidelitySearcher.register_pending released lock')
 
     def remove_case(self, config, **kwargs):
+        print('GPMultiFidelitySearcher.remove_case waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.remove_case got lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.remove_case(
                 config_cs, resource=int(kwargs[self._resource_attribute]))
+        print('GPMultiFidelitySearcher.remove_case released lock')
 
     def evaluation_failed(self, config, **kwargs):
+        print('GPMultiFidelitySearcher.evaluation_failed waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.evaluation_failed got lock')
             config_cs = self._to_config_cs(config)
             self.gp_searcher.evaluation_failed(config_cs)
+        print('GPMultiFidelitySearcher.evaluation_failed released lock')
 
     def dataset_size(self):
+        print('GPMultiFidelitySearcher.dataset_size waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.dataset_size()
+            print('GPMultiFidelitySearcher.dataset_size got lock')
+            result = self.gp_searcher.dataset_size()
+        print('GPMultiFidelitySearcher.dataset_size released lock')
+        return result
 
     def cumulative_profile_record(self):
+        print('GPMultiFidelitySearcher.cumulative_profile_record waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.cumulative_profile_record()
+            print('GPMultiFidelitySearcher.cumulative_profile_record got lock')
+            result = self.gp_searcher.cumulative_profile_record()
+        print('GPMultiFidelitySearcher.cumulative_profile_record released lock')
+        return result
 
     def model_parameters(self):
+        print('GPMultiFidelitySearcher.model_parameters waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.get_params()
+            print('GPMultiFidelitySearcher.model_parameters got lock')
+            result = self.gp_searcher.get_params()
+        print('GPMultiFidelitySearcher.model_parameters released lock')
+        return result
 
     def get_state(self):
+        print('GPMultiFidelitySearcher.get_state waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.get_state()
+            print('GPMultiFidelitySearcher.get_state got lock')
+            result = self.gp_searcher.get_state()
+        print('GPMultiFidelitySearcher.get_state released lock')
+        return result
 
     def clone_from_state(self, state):
+        print('GPMultiFidelitySearcher.clone_from_state waiting lock')
         with self._gp_lock:
+            print('GPMultiFidelitySearcher.clone_from_state got lock')
             _gp_searcher = self.gp_searcher.clone_from_state(state)
+        print('GPMultiFidelitySearcher.clone_from_state released lock')
         # Use copy constructor
         return GPMultiFidelitySearcher(
             reward_attribute=self._reward_attribute,
@@ -404,8 +476,12 @@ class GPMultiFidelitySearcher(BaseSearcher):
 
     @property
     def debug_log(self):
+        print('GPMultiFidelitySearcher.debug_log waiting lock')
         with self._gp_lock:
-            return self.gp_searcher.debug_log
+            print('GPMultiFidelitySearcher.debug_log got lock')
+            result = self.gp_searcher.debug_log
+        print('GPMultiFidelitySearcher.debug_log released lock')
+        return result
 
     def _to_config_cs(self, config):
         return _to_config_cs(self.gp_searcher.hp_ranges.config_space, config)

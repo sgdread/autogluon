@@ -32,10 +32,11 @@ class RemoteManager(object):
     __instance = None
     def __new__(cls):
         # Singleton
-        if cls.__instance is None:
-            cls.__instance = object.__new__(cls)
-            cls.MASTER_IP = get_ip()
-            cls.start_local_node()
+        with cls.LOCK:
+            if cls.__instance is None:
+                cls.__instance = object.__new__(cls)
+        cls.MASTER_IP = get_ip()
+        cls.start_local_node()
         return cls.__instance
 
     @classmethod
@@ -47,8 +48,11 @@ class RemoteManager(object):
         port = cls.get_port_id()
         with warning_filter():
             remote = Remote(cls.MASTER_IP, port, local=True)
+        print('start_local_node waiting lock')
         with cls.LOCK:
+            print('start_local_node got lock')
             cls.NODES[cls.MASTER_IP] = remote
+        print('start_local_node released lock')
 
     @classmethod
     def launch_each(cls, launch_fn, *args, **kwargs):
@@ -76,8 +80,11 @@ class RemoteManager(object):
                 continue
             port = cls.get_port_id()
             remote = Remote(node_ip, port)
+            print('add_remote_nodes waiting lock')
             with cls.LOCK:
+                print('add_remote_nodes got lock')
                 cls.NODES[node_ip] = remote
+            print('add_remote_nodes released lock')
             remotes.append(remote)
         return remotes
     
@@ -90,9 +97,13 @@ class RemoteManager(object):
 
     @classmethod
     def get_port_id(cls):
+        print('get_port_id waiting lock')
         with cls.LOCK:
+            print('get_port_id got lock')
             cls.PORT_ID.value += 1
-            return cls.PORT_ID.value
+            port_id = cls.PORT_ID.value
+        print('get_port_id released lock')
+        return port_id
 
     def __enter__(self):
         return self
