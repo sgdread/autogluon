@@ -1,14 +1,13 @@
 import autograd.numpy as anp
 import autograd.scipy.linalg as aspl
 from autograd.extend import primitive, defvjp
+import numpy as np
 import logging
-import torch
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['AddJitterOp',
            'flatten_and_concat']
-
 
 INITIAL_JITTER_FACTOR = 1e-9
 JITTER_GROWTH = 10.
@@ -20,8 +19,8 @@ def flatten_and_concat(x: anp.ndarray, sigsq_init: anp.ndarray):
 
 
 @primitive
-def AddJitterOp(inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR,
-                jitter_growth=JITTER_GROWTH, debug_log='false'):      
+def AddJitterOp(inputs: np.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR,
+                jitter_growth=JITTER_GROWTH, debug_log='false'):
     """
     Finds smaller jitter to add to diagonal of square matrix to render the
     matrix positive definite (in that linalg.potrf works).
@@ -54,15 +53,16 @@ def AddJitterOp(inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR
 
     Algorithm 4.1 could work for us.
     """
+    print(f'AddJitterOp.1')
     assert initial_jitter_factor > 0. and jitter_growth > 1.
     n_square = inputs.shape[0] - 1
-    n = anp.int(anp.sqrt(n_square))
+    n = np.int(np.sqrt(n_square))
     assert n_square % n == 0 and n_square // n == n, "x must be square matrix, shape (n, n)"
-    x, sigsq_init = anp.reshape(inputs[:-1], (n, -1)), inputs[-1]
-    
+    x, sigsq_init = np.reshape(inputs[:-1], (n, -1)), inputs[-1]
+
     def _get_constant_identity(x, constant):
         n, _ = x.shape
-        return anp.diag(anp.ones((n,)) * constant)
+        return np.diag(np.ones((n,)) * constant)
 
     def _get_jitter_upperbound(x):
         # To define a safeguard in the while-loop of the forward,
@@ -70,29 +70,34 @@ def AddJitterOp(inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR
         # the bound is quite generous, and is dependent on the scale of the input x
         # (the scale is captured via the trace of x)
         # the primary goal is avoid any infinite while-loop.
-        return JITTER_UPPERBOUND_FACTOR * max(1., anp.mean(anp.diag(x)))
+        return JITTER_UPPERBOUND_FACTOR * max(1., np.mean(np.diag(x)))
+    print(f'AddJitterOp.2')
 
     jitter = 0.
     jitter_upperbound = _get_jitter_upperbound(x)
     must_increase_jitter = True
     x_plus_constant = None
 
+    print(f'AddJitterOp.3')
     while must_increase_jitter and jitter <= jitter_upperbound:
         try:
             x_plus_constant = x + _get_constant_identity(
                 x, sigsq_init + jitter)
-            L = torch.cholesky(torch.tensor(x_plus_constant)).numpy()
+            print(f'AddJitterOp.4')
+            L = np.linalg.cholesky(x_plus_constant)
+            print(f'AddJitterOp.5')
             must_increase_jitter = False
-        except anp.linalg.LinAlgError:
+        except np.linalg.LinAlgError:
             if debug_log == 'true':
                 logger.info("sigsq = {} does not work".format(
                     sigsq_init + jitter))
             if jitter == 0.0:
-                jitter = initial_jitter_factor * max(1., anp.mean(anp.diag(x)))
+                jitter = initial_jitter_factor * max(1., np.mean(np.diag(x)))
             else:
                 jitter = jitter * jitter_growth
 
-    assert not must_increase_jitter, "The jitter ({}) has reached its upperbound ({}) while the Cholesky of the input matrix still cannot be computed.".format(jitter, jitter_upperbound)
+    assert not must_increase_jitter, "The jitter ({}) has reached its upperbound ({}) while the Cholesky of the input matrix still cannot be computed.".format(
+        jitter, jitter_upperbound)
 
     if debug_log == 'true':
         logger.info("sigsq_final = {}".format(sigsq_init + jitter))
@@ -100,9 +105,12 @@ def AddJitterOp(inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR
     return x_plus_constant
 
 
-def AddJitterOp_vjp(ans: anp.ndarray, inputs: anp.ndarray, initial_jitter_factor=INITIAL_JITTER_FACTOR, jitter_growth=JITTER_GROWTH, debug_log='false'):
+def AddJitterOp_vjp(
+        ans: np.ndarray, inputs: np.ndarray,
+        initial_jitter_factor=INITIAL_JITTER_FACTOR, jitter_growth=JITTER_GROWTH,
+        debug_log='false'):
     return lambda g: anp.append(anp.reshape(g, (-1,)), anp.sum(anp.diag(g)))
-    
+
 
 defvjp(AddJitterOp, AddJitterOp_vjp)
 
@@ -116,12 +124,11 @@ def cholesky_factorization(a):
 
     See https://arxiv.org/abs/1710.08717 for derivation of backward (vjp)
     expression.
-    
+
     :param a: Symmmetric positive definite matrix A
     :return: Lower-triangular Cholesky factor L of A
     """
-    result = torch.cholesky(torch.tensor(a)).numpy()
-    return result
+    return np.linalg.cholesky(a)
 
 
 def copyltu(x):
@@ -129,9 +136,11 @@ def copyltu(x):
 
 
 def cholesky_factorization_backward(l, lbar):
+    print(f'cholesky_factorization_backward.1')
     abar = copyltu(anp.matmul(anp.transpose(l), lbar))
     abar = anp.transpose(aspl.solve_triangular(l, abar, lower=True, trans='T'))
     abar = aspl.solve_triangular(l, abar, lower=True, trans='T')
+    print(f'cholesky_factorization_backward.2')
     return 0.5 * abar
 
 

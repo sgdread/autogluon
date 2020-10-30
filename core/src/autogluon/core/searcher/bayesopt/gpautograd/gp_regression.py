@@ -102,14 +102,19 @@ class GaussianProcessRegression(GaussianProcessModel):
                 self._debug_writer.store_args(
                     self.likelihood.collect_params().values(), X, Y,
                     self.likelihood.param_encoding_pairs())
+            print(f'                            executor.1')
             objective = negative_log_posterior(self.likelihood, X, Y)
             if self._debug_writer is not None:
+                print(f'                            executor.2')
                 self._debug_writer.store_value(objective)
+            print(f'                            executor.3')
             if self.optimization_config.verbose:
+                print(f'                            executor.4')
                 msg_lst = ["[criterion = {}]".format(objective)]
                 for param, encoding in self.likelihood.param_encoding_pairs():
                     msg_lst.append(param_to_pretty_string(param, encoding))
                 logger.info('\n'.join(msg_lst))
+            print(f'                            executor.5')
             return objective
 
         return make_scipy_objective(executor), param_dict

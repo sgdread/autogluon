@@ -6,7 +6,8 @@ import multiprocessing as mp
 logger = logging.getLogger(__name__)
 
 __all__ = ['Task']
-
+import time
+import random
 class Task(object):
     """Individual training task, containing the lauch function, default arguments and
     required resources.
@@ -31,6 +32,7 @@ class Task(object):
         self.resources = resources
         with Task.LOCK:
             self.task_id = Task.TASK_ID.value
+            print(f'Generated task_id: {self.task_id}')
             if 'args' in self.args:
                 if isinstance(self.args['args'], (argparse.Namespace, argparse.ArgumentParser)):
                     args_dict = vars(self.args['args'])
@@ -38,6 +40,7 @@ class Task(object):
                     args_dict = self.args['args']
                 args_dict.update({'task_id': self.task_id})
             Task.TASK_ID.value += 1
+            time.sleep(random.random())
 
     @classmethod
     def set_id(cls, taskid):

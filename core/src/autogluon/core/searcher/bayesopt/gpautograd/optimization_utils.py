@@ -1,4 +1,8 @@
 import numpy as np
+from autograd.core import vspace, make_vjp, VJPNode, backward_pass, add_outgrads
+from autograd.tracer import trace
+from autograd.util import toposort
+from autograd.wrap_util import unary_to_nary
 from scipy import optimize
 from autograd import value_and_grad
 
@@ -51,6 +55,56 @@ def make_scipy_objective(autograd_func):
     :param autograd_func: Autograd expression
     :return: SciPy optimizer objective
     """
+
+    def make_vjp(fun, x):
+        print(f'                                obj.3.1')
+        start_node = VJPNode.new_root()
+        print(f'                                obj.3.2')
+        end_value, end_node = trace(start_node, fun, x)
+        print(f'                                obj.3.3')
+        if end_node is None:
+            def vjp(g):
+                print(f'                                obj.3.4')
+                zeros = vspace(x).zeros()
+                print(f'                                obj.3.5')
+                return zeros
+        else:
+            def vjp(g):
+                print(f'                                obj.3.6')
+                b = backward_pass(g, end_node)
+                print(f'                                obj.3.7')
+                return b
+        print(f'                                obj.3.8')
+        return vjp, end_value
+
+    def backward_pass(g, end_node):
+        outgrads = {end_node: (g, False)}
+        print(f'                                obj.3.6.1')
+        for node in toposort(end_node):
+            outgrad = outgrads.pop(node)
+            ingrads = node.vjp(outgrad[0])
+            for parent, ingrad in zip(node.parents, ingrads):
+                outgrads[parent] = add_outgrads(outgrads.get(parent), ingrad)
+        print(f'                                obj.3.6.2')
+        return outgrad[0]
+
+    @unary_to_nary
+    def value_and_grad(fun, x):
+        """Returns a function that returns both value and gradient. Suitable for use
+        in scipy.optimize"""
+        print(f'                                obj.1')
+        vjp, ans = make_vjp(fun, x)
+        print(f'                                obj.2')
+        if not vspace(ans).size == 1:
+            raise TypeError("value_and_grad only applies to real scalar-output "
+                            "functions. Try jacobian, elementwise_grad or "
+                            "holomorphic_grad.")
+        ones = vspace(ans).ones()
+        print(f'                                obj.3')
+        b = vjp(ones)
+        print(f'                                obj.4')
+        return ans, b
+
     return value_and_grad(lambda x: autograd_func(x))
 
 

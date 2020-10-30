@@ -32,16 +32,22 @@ def cholesky_computations(
         this dict
     :return: L, P
     """
+    print(f'cholesky_computations.1')
     kernel_mat = kernel(features, features)
 #   Add jitter to noise_variance (if needed) in order to guarantee that
 #   Cholesky factorization works
+    print(f'cholesky_computations.2')
     sys_mat = AddJitterOp(
         flatten_and_concat(kernel_mat, noise_variance),
         initial_jitter_factor=NOISE_VARIANCE_LOWER_BOUND,
         debug_log='true' if debug_log else 'false')
+    print(f'cholesky_computations.3')
     chol_fact = cholesky_factorization(sys_mat)
+    print(f'cholesky_computations.4')
     centered_y = targets - anp.reshape(mean(features), (-1, 1))
+    print(f'cholesky_computations.5')
     pred_mat = aspl.solve_triangular(chol_fact, centered_y, lower=True)
+    print(f'cholesky_computations.6')
     # print('chol_fact', chol_fact)
 
     if test_intermediates is not None:

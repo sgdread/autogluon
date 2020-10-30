@@ -297,6 +297,7 @@ class FIFOScheduler(TaskScheduler):
             # This is not a new config, but a paused one which is now promoted
             extra_kwargs['new_config'] = False
         task = self._create_new_task(config, resources=resources)
+        print(f'_create_new_task {task}')
         self.add_job(task, **extra_kwargs)
 
     def run_with_config(self, config):
