@@ -2,6 +2,7 @@ import copy
 import gc
 import logging
 import os
+import pathlib
 import pickle
 import sys
 import time
@@ -541,7 +542,9 @@ class AbstractModel:
         util_args = dict(
             dataset_train_filename=dataset_train_filename,
             dataset_val_filename=dataset_val_filename,
-            directory=directory,
+            # using absolute path - child jobs can have different working directory
+            # this allow to load datasets consistently
+            directory=str(pathlib.Path().absolute() / directory) + '/',
             model=self,
             time_start=time_start,
             time_limit=scheduler_params['time_out'],
