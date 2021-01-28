@@ -2,7 +2,6 @@ import copy
 import gc
 import logging
 import os
-import pathlib
 import pickle
 import sys
 import time
@@ -11,7 +10,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from ...utils import get_cpu_count
+from ...utils import get_cpu_count, get_absolute_path
 from ...utils.exceptions import TimeLimitExceeded, NoValidFeatures
 from ...utils.loaders import load_pkl
 from ...utils.savers import save_json, save_pkl
@@ -544,7 +543,7 @@ class AbstractModel:
             dataset_val_filename=dataset_val_filename,
             # using absolute path - child jobs can have different working directory
             # this allow to load datasets consistently
-            directory=str(pathlib.Path().absolute() / directory) + '/',
+            directory=get_absolute_path(directory) + '/',
             model=self,
             time_start=time_start,
             time_limit=scheduler_params['time_out'],
