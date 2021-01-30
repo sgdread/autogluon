@@ -74,7 +74,7 @@ class TabularPrediction(BaseTask):
             num_bagging_sets=None,
             stack_ensemble_levels=None,
             num_trials=None,
-            search_strategy='random',
+            search_strategy='raytune',
             verbosity=2,
             **kwargs):
         """
@@ -311,9 +311,9 @@ class TabularPrediction(BaseTask):
         num_trials : int, default = None
             Maximal number of different hyperparameter settings of each model type to evaluate during HPO (only matters if `hyperparameter_tune = True`).
             If both `time_limit` and `num_trials` are specified, `time_limit` takes precedent.
-        search_strategy : str, default = 'random'
+        search_strategy : str, default = 'raytune'
             Which hyperparameter search algorithm to use (only matters if `hyperparameter_tune=True`).
-            Options include: 'random' (random search), 'bayesopt' (Gaussian process Bayesian optimization), 'skopt' (SKopt Bayesian optimization), 'grid' (grid search).
+            Options include: 'raytune' (random search), 'random' (random search), 'bayesopt' (Gaussian process Bayesian optimization), 'skopt' (SKopt Bayesian optimization), 'grid' (grid search).
         verbosity : int, default = 2
             Verbosity levels range from 0 to 4 and control how much information is printed during fit().
             Higher levels correspond to more detailed print statements (you can set verbosity = 0 to suppress warnings).
